@@ -11,8 +11,8 @@ if __name__ == "__main__":
     )
 
     parser.add_argument("filename", help="Archivo txt a comparar")
-    parser.add_argument("-z", "--zipfile", help="Archivo comprimido a comparar", default="descomprimido-elmejorprofesor.txt")
+    parser.add_argument("-d", "--decompressed", help="Archivo descomprimido a comparar", default="descomprimido-elmejorprofesor.txt")
 
     args = parser.parse_args()
 
-    print("ok" if verify(args.filename, args.zipfile) else "nok")
+    print("ok" if verify(args.filename, args.decompressed) else "nok")
