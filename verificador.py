@@ -1,6 +1,15 @@
 from argparse import ArgumentParser
 
 def verify(filename1: str, filename2: str) -> bool:
+    """Verifica que 2 archivos tengan el mismo contenido.
+
+    Args:
+        filename1 (str): Nombre del primer archivo.
+        filename2 (str): Nombre del segundo archivo.
+
+    Returns:
+        bool: Verdadero si los archivos tienen el mismo contenido y falso en el caso contrario.
+    """
     with open(filename1, "rb") as file1, open(filename2, "rb") as file2:
         return all(byte1 == byte2 for byte1, byte2 in zip(file1, file2))
     

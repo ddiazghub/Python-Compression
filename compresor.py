@@ -1,5 +1,4 @@
 import os
-import itertools
 
 from timeit import Timer
 from argparse import ArgumentParser
@@ -8,6 +7,17 @@ from typing import Generator
 from shared import Literal, Reference, WINDOW_SIZE, CHUNK_SIZE, MAX_REF_LENGTH, MIN_BYTE_LENGTH, byte_length, progress_bar
 
 def window_match(lookahead: str, window: str) -> Literal | Reference:
+    """Realiza una búsqueda en la ventana de referencia para encontrar una sequencia que coincida con la sequencia iniciada con el carácter actual que se está leyendo.
+    Si existe una sequencia anterior lo suficientemente larga para ser comprimida y ahorrar espacio, se comprime.
+
+    Args:
+        lookahead (str): Cadena que contiene el carácter actual y todos los que están despues de este.
+        window (str): Ventana de referencia para buscar ocurrencias anteriores de la sequencia actual.
+
+    Returns:
+        Literal | Reference: Si se encuentra una ocurrencia anterior de la sequencia actual y se puede ahorrar espacio representándola como una referencia, se retorna un objeto de clase Reference.
+        En caso contrario, se retorna un literal y el caractér no se comprime.
+    """
     window_length = len(window)
     lookahead_length = len(lookahead)
     found = window.find(lookahead[0])
@@ -31,6 +41,11 @@ def window_match(lookahead: str, window: str) -> Literal | Reference:
 
 @contextmanager
 def file_read(filename: str) -> Generator[Generator[str, None, None], None, None]:
+    """Función que ayuda a leer un archivo por partes con un buffer.
+
+    Args:
+        filename (str): El archivo a leer.
+    """
     file = open(filename, "r")
 
     try:
@@ -48,6 +63,15 @@ def file_read(filename: str) -> Generator[Generator[str, None, None], None, None
         file.close()
 
 def process_chunk(chunk: str, offset: int) -> bytearray:
+    """Comprime una parte del archivo de texto, a partir de una determinada posición.
+
+    Args:
+        chunk (str): La parte del archivo de texto que se va a comprimir.
+        offset (int): Posición a partir de la cual iniciar a comprimir.
+
+    Returns:
+        bytearray: La parte comprimida en bytes.
+    """
     output = bytearray()
     iterator = iter(range(offset, len(chunk)))
 
@@ -64,16 +88,24 @@ def process_chunk(chunk: str, offset: int) -> bytearray:
     return output
 
 def compress(filename: str, outfile: str):
+    """Comprime un archivo de texto utilizando una versión modificada del algoritmo LZ77. Muestra una barra de progreso mientras se está haciendo la compresión.
+
+    Args:
+        filename (str): El archivo de texto.
+        outfile (str): El archivo comprimido de salida.
+    """
     progress = 0
     file_size = os.stat(filename).st_size
 
     with file_read(filename) as chunks, open(outfile, "wb") as out:
+        # Primera parte del archivo.
         if first := next(chunks, None):
             output = process_chunk(first, 0)
             out.write(output)
             progress += len(first.encode("utf-8"))
             print(progress_bar(progress, file_size), end='\r')
 
+        # Siguientes partes del archivo.
         for chunk in chunks:
             output = process_chunk(chunk, WINDOW_SIZE)
             out.write(output)

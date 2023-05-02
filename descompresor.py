@@ -1,17 +1,28 @@
-import numpy as np
 from enum import Enum
 from argparse import ArgumentParser
 from timeit import Timer
 from shared import BITMASK, Reference
 
 class TokenType(Enum):
+    """Tipos de símbolo que pueden estar en un archivo comprimido. El valor que se le asigna a cada variante del enum es el tamaño en bytes del símbolo."""
     Reference = 0
     Char8 = 1
     Char16 = 2
     Char24 = 3
     Char32 = 4
 
-def parse_token(byte: np.uint8) -> TokenType:
+def parse_token(byte: int) -> TokenType:
+    """Determina a cual tipo de símbolo pertenece un byte.
+
+    Args:
+        byte (int): El byte a analizar.
+
+    Raises:
+        ValueError: Si el byte no es valido.
+
+    Returns:
+        TokenType: El tipo de símbolo al que pertenece el byte.
+    """
     for i in range(5):
         if (BITMASK >> i) & byte == 0:
             match i:
@@ -28,10 +39,13 @@ def parse_token(byte: np.uint8) -> TokenType:
     
     raise ValueError(f"Byte {byte} is not a valid compressed token.")
 
-def process_chunk(chunk):
-    pass
-
 def decompress(filename: str, outfile: str):
+    """Descomprime un archivo comprimido con una versión modificada del algoritmo LZ77.
+
+    Args:
+        filename (str): Nombre del archivo comprimido.
+        outfile (str): Nombre del archivo descomprimido de salida.
+    """
     with open(filename, "rb") as file:
         buffer = file.read()
         output: list[str] = []
