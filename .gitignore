@@ -1,0 +1,5 @@
+*.txt
+*.zip
+*.elmejorprofesor
+.vscode
+__pycache__
