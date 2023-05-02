@@ -1,4 +1,4 @@
-LENGTH_BITS = 5
+LENGTH_BITS = 6
 OFFSET_BITS = 14 - LENGTH_BITS
 WINDOW_SIZE = 2**OFFSET_BITS - 1
 MIN_BYTE_LENGTH = 2
@@ -93,16 +93,17 @@ def byte_length(string: str) -> int:
     """
     return len(bytes(string, "utf-8"))
 
-def progress_bar(progress: int, total: int) -> str:
-    """Retorna una barra de progreso como una cadena de texto.
 
-    Args:
-        progress (int): Progreso actual.
-        total (int): El total o valor de progreso necesario para terminar.
-
-    Returns:
-        str: Una barra de progreso como una cadena de texto.
-    """
-    percent = min(progress * 100 / total, 100)
-
-    return f"[{'#' * int(percent)}{' ' * int(100 - percent)}] {round(percent, 1)}%"
+#def progress_bar(progress: int, total: int) -> str:
+#    """Retorna una barra de progreso como una cadena de texto.
+#
+#    Args:
+#        progress (int): Progreso actual.
+#        total (int): El total o valor de progreso necesario para terminar.
+#
+#    Returns:
+#        str: Una barra de progreso como una cadena de texto.
+#    """
+#    percent = min(progress * 100 / total, 100)
+#
+#    return f"[{'#' * int(percent)}{' ' * int(100 - percent)}] {round(percent, 1)}%"

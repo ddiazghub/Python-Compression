@@ -4,7 +4,7 @@ from timeit import Timer
 from argparse import ArgumentParser
 from contextlib import contextmanager
 from typing import Generator
-from shared import Literal, Reference, WINDOW_SIZE, CHUNK_SIZE, MAX_REF_LENGTH, MIN_BYTE_LENGTH, byte_length, progress_bar
+from shared import Literal, Reference, WINDOW_SIZE, CHUNK_SIZE, MAX_REF_LENGTH, MIN_BYTE_LENGTH, byte_length
 
 def window_match(lookahead: str, window: str) -> Literal | Reference:
     """Realiza una búsqueda en la ventana de referencia para encontrar una sequencia que coincida con la sequencia iniciada con el carácter actual que se está leyendo.
@@ -103,14 +103,14 @@ def compress(filename: str, outfile: str):
             output = process_chunk(first, 0)
             out.write(output)
             progress += len(first.encode("utf-8"))
-            print(progress_bar(progress, file_size), end='\r')
+            #print(progress_bar(progress, file_size), end='\r')
 
         # Siguientes partes del archivo.
         for chunk in chunks:
             output = process_chunk(chunk, WINDOW_SIZE)
             out.write(output)
             progress += len(first.encode("utf-8"))
-            print(progress_bar(progress, file_size), end='\r')
+            #print(progress_bar(progress, file_size), end='\r')
 
 if __name__ == "__main__":
     parser = ArgumentParser(
