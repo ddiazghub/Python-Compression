@@ -1,72 +1,43 @@
-from enum import Enum
 from argparse import ArgumentParser
 from timeit import Timer
-from shared import BITMASK, Reference
+from shared import CHUNK_SIZE, REF_BYTE_LENGTH, WINDOW_SIZE, Reference
 
-class TokenType(Enum):
-    """Tipos de símbolo que pueden estar en un archivo comprimido. El valor que se le asigna a cada variante del enum es el tamaño en bytes del símbolo."""
-    Reference = 0
-    Char8 = 1
-    Char16 = 2
-    Char24 = 3
-    Char32 = 4
-
-def parse_token(byte: int) -> TokenType:
-    """Determina a cual tipo de símbolo pertenece un byte.
+def process_chunk(chunk: bytes, window: bytearray) -> bytearray:
+    """Descomprime una parte del archivo.
 
     Args:
-        byte (int): El byte a analizar.
-
-    Raises:
-        ValueError: Si el byte no es valido.
+        chunk (bytes): La parte del archivo que se va a descomprimir.
+        window (bytes): Buffer con los últimos 1024 bytes descomprimidos anteriormente.
+        Se necesitan para encontrar referencias a secuencias anteriores de bytes.
 
     Returns:
-        TokenType: El tipo de símbolo al que pertenece el byte.
+        bytearray: La parte descomprimida en bytes.
     """
-    for i in range(5):
-        if (BITMASK >> i) & byte == 0:
-            match i:
-                case 0:
-                    return TokenType.Char8
-                case 1:
-                    return TokenType.Reference
-                case 2:
-                    return TokenType.Char16
-                case 3:
-                    return TokenType.Char24
-                case _:
-                    return TokenType.Char32
+    output = window
     
-    raise ValueError(f"Byte {byte} is not a valid compressed token.")
+    for i in range(0, len(chunk), REF_BYTE_LENGTH):
+        ref = Reference.from_bytes(chunk[i: i + REF_BYTE_LENGTH])
+        match_start = len(output) - ref.offset
+        output.extend(output[match_start: match_start + ref.length])
+        output.append(ref.next_byte)
+
+    return output
 
 def decompress(filename: str, outfile: str):
-    """Descomprime un archivo comprimido con una versión modificada del algoritmo LZ77.
+    """Descomprime un archivo comprimido usando el algoritmo LZ77.
 
     Args:
         filename (str): Nombre del archivo comprimido.
         outfile (str): Nombre del archivo descomprimido de salida.
     """
-    with open(filename, "rb") as file:
-        buffer = file.read()
-        output: list[str] = []
-        i = 0
+    with open(filename, "rb") as file, open(outfile, "wb") as out:
+        output = bytearray()
 
-        while i < len(buffer):
-            token_type = parse_token(buffer[i])
-
-            match token_type:
-                case TokenType.Reference:
-                    ref = Reference(buffer=bytes(buffer[i: i + 2]))
-                    match_start = len(output) - ref.offset
-                    output.extend(output[match_start: match_start + ref.length])
-                    i += 2
-                case TokenType.Char8 | TokenType.Char16 | TokenType.Char24 | TokenType.Char32:
-                    char = str(bytes(buffer[i: i + token_type.value]), encoding="utf-8")
-                    output.append(char)
-                    i += token_type.value
-            
-    with open(outfile, "w") as out:
-        out.write("".join(output))
+        while chunk := file.read(CHUNK_SIZE - 1):
+            window = output[-WINDOW_SIZE:]
+            window_length = len(window)
+            output = process_chunk(chunk, window)
+            out.write(output[window_length:])
 
 if __name__ == "__main__":
     parser = ArgumentParser(

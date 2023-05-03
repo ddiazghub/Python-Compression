@@ -12,7 +12,7 @@ def verify(filename1: str, filename2: str) -> bool:
     """
     with open(filename1, "rb") as file1, open(filename2, "rb") as file2:
         return all(byte1 == byte2 for byte1, byte2 in zip(file1, file2))
-    
+
 if __name__ == "__main__":
     parser = ArgumentParser(
         prog="Verificador",
