@@ -64,7 +64,7 @@ class Reference(CompressionToken):
             Si se da este parámetro, se construye una referencia a partir de los bytes.
         """
         if buffer:
-            int_value = int.from_bytes(buffer)
+            int_value = int.from_bytes(buffer, "big")
             self.offset = (int_value & OFFSET_MASK) >> LENGTH_BITS
             self.length = int_value & LENGTH_MASK
         else:
@@ -74,7 +74,7 @@ class Reference(CompressionToken):
     def to_bytes(self) -> bytes:
         packed_bits = 0x8000 + (self.offset << LENGTH_BITS) + self.length
 
-        return packed_bits.to_bytes(2)
+        return packed_bits.to_bytes(2, "big")
     
     def step(self) -> int:
         return self.length
@@ -94,16 +94,16 @@ def byte_length(string: str) -> int:
     return len(bytes(string, "utf-8"))
 
 
-#def progress_bar(progress: int, total: int) -> str:
-#    """Retorna una barra de progreso como una cadena de texto.
-#
-#    Args:
-#        progress (int): Progreso actual.
-#        total (int): El total o valor de progreso necesario para terminar.
-#
-#    Returns:
-#        str: Una barra de progreso como una cadena de texto.
-#    """
-#    percent = min(progress * 100 / total, 100)
-#
-#    return f"[{'#' * int(percent)}{' ' * int(100 - percent)}] {round(percent, 1)}%"
+def progress_bar(progress: int, total: int) -> str:
+    """Retorna una barra de progreso como una cadena de texto.
+
+    Args:
+        progress (int): Progreso actual.
+        total (int): El total o valor de progreso necesario para terminar.
+
+    Returns:
+        str: Una barra de progreso como una cadena de texto.
+    """
+    percent = min(progress * 100 / total, 100)
+
+    return f"[{'#' * int(percent)}{' ' * int(100 - percent)}] {round(percent, 1)}%"

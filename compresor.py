@@ -5,6 +5,7 @@ from argparse import ArgumentParser
 from contextlib import contextmanager
 from typing import Generator
 from shared import Literal, Reference, WINDOW_SIZE, CHUNK_SIZE, MAX_REF_LENGTH, MIN_BYTE_LENGTH, byte_length
+from shared import progress_bar
 
 def window_match(lookahead: str, window: str) -> Literal | Reference:
     """Realiza una búsqueda en la ventana de referencia para encontrar una sequencia que coincida con la sequencia iniciada con el carácter actual que se está leyendo.
@@ -18,13 +19,33 @@ def window_match(lookahead: str, window: str) -> Literal | Reference:
         Literal | Reference: Si se encuentra una ocurrencia anterior de la sequencia actual y se puede ahorrar espacio representándola como una referencia, se retorna un objeto de clase Reference.
         En caso contrario, se retorna un literal y el caractér no se comprime.
     """
+    """
+    current = lookahead[0]
     window_length = len(window)
     lookahead_length = len(lookahead)
-    found = window.find(lookahead[0])
+    found = window.find(current)
 
     while found > -1:
-        max_length = min(window_length - found, lookahead_length, MAX_REF_LENGTH)
+        max_length = min(window_length - found, lookahead_length)
+        iterator = enumerate(zip(window[found:found + max_length], lookahead[:max_length]))
+        i = next((first != second for _, (first, second) in iterator), None)
+        length = i if i else max_length
 
+        if byte_length(lookahead[:length]) > MIN_BYTE_LENGTH:
+            return Reference(offset=window_length - found, length=i)
+        
+        found = window.find(current, found + 1)
+
+    return Literal(current)
+    """
+    current = lookahead[0]
+    window_length = len(window)
+    lookahead_length = len(lookahead)
+    found = window.find(current)
+
+    while found > -1:
+        max_length = min(window_length - found, lookahead_length)
+        
         for i in range(1, max_length):
             if window[found + i] != lookahead[i]:
                 if byte_length(lookahead[:i]) > MIN_BYTE_LENGTH:
@@ -35,9 +56,9 @@ def window_match(lookahead: str, window: str) -> Literal | Reference:
             if byte_length(lookahead[:max_length]) > MIN_BYTE_LENGTH:
                 return Reference(offset=window_length - found, length=max_length)
         
-        found = window.find(lookahead[0], found + 1)
+        found = window.find(current, found + 1)
 
-    return Literal(lookahead[0])
+    return Literal(current)
 
 @contextmanager
 def file_read(filename: str) -> Generator[Generator[str, None, None], None, None]:
@@ -77,7 +98,7 @@ def process_chunk(chunk: str, offset: int) -> bytearray:
 
     for i in iterator:
         window = chunk[max(i - WINDOW_SIZE, 0): i]
-        lookahead = chunk[i:]
+        lookahead = chunk[i:i + MAX_REF_LENGTH]
         matched = window_match(lookahead, window)
         output.extend(matched.to_bytes())
 
