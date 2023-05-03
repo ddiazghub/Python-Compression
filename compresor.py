@@ -1,6 +1,7 @@
 from timeit import Timer
 from argparse import ArgumentParser
-from shared import LENGTH_THRESHOLD, Reference, WINDOW_SIZE, CHUNK_SIZE, MAX_REF_LENGTH
+from constants import LENGTH_THRESHOLD, WINDOW_SIZE, CHUNK_SIZE, MAX_REF_LENGTH
+from reference import Reference
 
 def window_match(lookahead: bytes, window: bytes) -> Reference:
     """Realiza una búsqueda en la ventana de referencia para encontrar una sequencia que coincida con la sequencia iniciada con el byte actual que se está leyendo.

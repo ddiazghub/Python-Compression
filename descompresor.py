@@ -1,6 +1,7 @@
 from argparse import ArgumentParser
 from timeit import Timer
-from shared import CHUNK_SIZE, REF_BYTE_LENGTH, WINDOW_SIZE, Reference
+from constants import CHUNK_SIZE, REF_BYTE_LENGTH, WINDOW_SIZE
+from reference import Reference
 
 def process_chunk(chunk: bytes, window: bytearray) -> bytearray:
     """Descomprime una parte del archivo.
