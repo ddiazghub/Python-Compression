@@ -94,4 +94,4 @@ if __name__ == "__main__":
     filename, outfile = args.filename, args.outfile
     timer = Timer(lambda: compress(filename, outfile))
 
-    print(f"\nTiempo de ejecución: {timer.timeit(1)} segundos")
+    print(timer.timeit(1))

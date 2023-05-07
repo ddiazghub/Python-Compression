@@ -53,4 +53,4 @@ if __name__ == "__main__":
     filename, outfile = args.zipfile, args.outfile
     timer = Timer(lambda: decompress(filename, outfile))
 
-    print(f"Tiempo de ejecución: {timer.timeit(1)} segundos")
+    print(timer.timeit(1))

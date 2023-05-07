@@ -1,15 +1,14 @@
 import collections
 import math
 import sys
-import time
 import os
+import time
 
 from typing import Callable, Generic, TypeVar
 from dataclasses import dataclass
 from mpi4py import MPI
 from mpi_globals import CHANNEL, CLUSTER_SIZE, RANK
 from message import ChunkAssignment, Finalize, WorkerDone
-from logger import log
 
 class WorkerResult:
     def as_bytes() -> bytes | bytearray:
@@ -61,8 +60,6 @@ class Worker(Process, Generic[T]):
         self.write_callback = write_callback
     
     def run(self) -> None:
-        log(f"Process started")
-
         while True:
             self.handle_messages()
 
@@ -76,15 +73,11 @@ class Worker(Process, Generic[T]):
 
             match message:
                 case ChunkAssignment(chunk_number):
-                    log(f"Received workload assignment for chunk {chunk_number}")
                     result = self.chunk_processor(self.filename, chunk_number)
                     self.workload = WorkLoad(chunk_number, result)
-                    log(f"Finished processing chunk. Waiting to write output.")
-                case WorkerDone(worker_rank):
+                case WorkerDone(_):
                     self.current_chunk += 1
-                    log(f"Worker {worker_rank} is done with it's workload. Current chunk is {self.current_chunk}")
                 case Finalize():
-                    log("All work has finished. Exiting.")
                     sys.exit(0)
 
     def write_output(self) -> None:
@@ -93,9 +86,6 @@ class Worker(Process, Generic[T]):
 
         self.workload = None
         message = WorkerDone(RANK)
-        
-        log(f"Writing to output.")
-        
         Process.broadcast(message)
         self.current_chunk += 1
 
@@ -103,6 +93,7 @@ class Root(Process):
     free_workers: collections.deque[int]
     total_chunks: int
     outfile: str
+    running: bool
 
     def __init__(self, filename: str, outfile: str, chunk_size: int) -> None:
         super().__init__()
@@ -110,14 +101,15 @@ class Root(Process):
         total_workload = os.stat(filename).st_size
         self.total_chunks = math.ceil(total_workload / chunk_size)
         self.outfile = outfile
+        self.running = False
 
         with open(outfile, "wb") as _:
             pass
     
     def run(self) -> None:
-        log(f"Process started. Total chunks: {self.total_chunks}")
+        self.running = True
 
-        while True:
+        while self.running:
             self.dispatch()
             self.handle_messages()
             self.handle_finalize()
@@ -125,7 +117,6 @@ class Root(Process):
     def dispatch(self) -> None:
         while len(self.free_workers) > 0 and self.current_chunk < self.total_chunks:
             worker = self.free_workers.popleft()
-            log(f"Dispatching workload to worker with rank {worker}. Current chunk index: {self.current_chunk}")
             message = ChunkAssignment(self.current_chunk)
             CHANNEL.isend(message, worker)
             self.current_chunk += 1
@@ -134,14 +125,10 @@ class Root(Process):
         while CHANNEL.iprobe():
             message: WorkerDone = CHANNEL.recv()
             self.free_workers.append(message.worker_rank)
-            log(f"Worker with rank {message.worker_rank} has finished it's work. Registering as free.")
-            log(f"{len(self.free_workers)} workers are currently free.")
 
     def handle_finalize(self) -> None:
         if len(self.free_workers) == CLUSTER_SIZE - 1 and self.current_chunk == self.total_chunks:
             Process.broadcast(Finalize())
-            time.sleep(0.5)
+            time.sleep(0.05)
             MPI.Finalize()
-            log("All work has finished. Exiting.")
-            log(f"Check file {self.outfile}. To see output.")
-            sys.exit(0)
+            self.running = False
