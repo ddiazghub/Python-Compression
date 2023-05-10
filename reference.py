@@ -1,5 +1,4 @@
 from __future__ import annotations
-
 from constants import LENGTH_MASK, OFFSET_BITS, OFFSET_MASK, REF_BYTE_LENGTH
 
 class Reference:

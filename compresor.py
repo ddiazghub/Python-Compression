@@ -71,7 +71,6 @@ def compress(filename: str, outfile: str):
         filename (str): El archivo a comprimir.
         outfile (str): El archivo comprimido de salida.
     """
-
     with open(filename, "rb") as file, open(outfile, "wb") as out:
         buffer = b""
         

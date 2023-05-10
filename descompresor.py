@@ -42,11 +42,11 @@ def decompress(filename: str, outfile: str):
 
 if __name__ == "__main__":
     parser = ArgumentParser(
-        prog="Decompresor",
-        description="Descomprime un archivo comprimido"
+        prog="Descompresor LZ77",
+        description="Descomprime un archivo comprimido con el algoritmo LZ77"
     )
 
-    parser.add_argument("-z", "--zipfile", help="Nombre del archivo comprimido", default="comprimido.elmejorprofesor")
+    parser.add_argument("zipfile", help="Nombre del archivo a descomprimir")
     parser.add_argument("-o", "--outfile", help="Nombre del archivo descomprimido", default="descomprimido-elmejorprofesor.txt")
 
     args = parser.parse_args()

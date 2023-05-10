@@ -16,12 +16,12 @@ def verify(filename1: str, filename2: str) -> bool:
 if __name__ == "__main__":
     parser = ArgumentParser(
         prog="Verificador",
-        description="Verifica la integridad de un archivo descomprimido"
+        description="Verifica que dos archivos sean iguales. Destinado a verificar la integridad de archivos descomprimidos"
     )
 
-    parser.add_argument("filename", help="Archivo txt a comparar")
-    parser.add_argument("-d", "--decompressed", help="Archivo descomprimido a comparar", default="descomprimido-elmejorprofesor.txt")
+    parser.add_argument("file1", help="Primer archivo a comparar")
+    parser.add_argument("file2", help="Segundo archivo a comparar")
 
     args = parser.parse_args()
 
-    print("ok" if verify(args.filename, args.decompressed) else "nok")
+    print("ok" if verify(args.file1, args.file2) else "nok")
