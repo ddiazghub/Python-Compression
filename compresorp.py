@@ -3,17 +3,17 @@ from timeit import Timer
 from typing import Callable
 from constants import CHUNK_SIZE, WINDOW_SIZE
 from mpi_globals import RANK
-from process import BytesResult, Root, Worker
+from process import Root, Worker
 from compresor import process_chunk
 
-def chunk_processor(chunk_size: int) -> Callable[[str, int], BytesResult]:
+def chunk_processor(chunk_size: int) -> Callable[[str, int], bytes]:
     """
     Retorna una función que permite comprimir una parte del tamaño especificado de un archivo de texto.
 
     Args:
         chunk_size (int): El tamaño de cada parte del archivo.
     """
-    def compress_chunk(filename: str, chunk_number: int) -> BytesResult:
+    def compress_chunk(filename: str, chunk_number: int) -> bytes:
         """
         Lee una parte de un archivo de texto y la comprime.
 
@@ -31,7 +31,7 @@ def chunk_processor(chunk_size: int) -> Callable[[str, int], BytesResult]:
             chunk = file.read(chunk_size)
             output = process_chunk(window + chunk, window_size)
             
-            return BytesResult(output)
+            return output
     
     return compress_chunk
 

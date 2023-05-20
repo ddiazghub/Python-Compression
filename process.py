@@ -4,40 +4,17 @@ import sys
 import os
 import time
 
-from typing import Callable, Generic, TypeVar
+from typing import Callable
 from dataclasses import dataclass
 from mpi4py import MPI
 from mpi_globals import CHANNEL, CLUSTER_SIZE, RANK
 from message import ChunkAssignment, Finalize, WorkerDone
 
-class WorkerResult:
-    """Resultado del procesamiento de una parte de un archivo por parte de un Worker."""
-    def as_bytes() -> bytes | bytearray:
-        """Serializa el resultado y lo retorna como una secuencia de bytes."""
-        pass
-
-class BytesResult(WorkerResult):
-    """Resultado del procesamiento de una parte de un archivo por parte de un Worker."""
-    output: bytes | bytearray
-
-    def __init__(self, output: bytes | bytearray) -> None:
-        """Resultado del procesamiento de una parte de un archivo por parte de un Worker.
-
-        Args:
-            output (bytearray): El resultado en bytes de procesar una parte del archivo.
-        """
-        self.output = output
-
-    def as_bytes(self) -> bytes | bytearray:
-        return self.output
-
-T = TypeVar("T", bound=WorkerResult)
-
 @dataclass
-class WorkLoad(Generic[T]):
+class WorkLoad:
     """Trabajo asignado a un Worker por parte de proceso raíz."""
     chunk: int
-    result: T
+    result: bytes | bytearray
 
 class Process:
     """Proceso que existe junto con otros en un entorno de paralelismo."""
@@ -49,7 +26,7 @@ class Process:
         self.current_chunk = 0
         self.running = False
 
-    def broadcast(message: ChunkAssignment | WorkerDone | Finalize) -> None:
+    def broadcast(message: ChunkAssignment | WorkerDone | Finalize | int, tag: int = 0) -> None:
         """Realiza un broadcast del mensaje especificado y lo envía al resto de procesos.
 
         Args:
@@ -57,7 +34,7 @@ class Process:
         """
         for i in range(CLUSTER_SIZE):
             if i != RANK:
-                CHANNEL.isend(message, i)
+                CHANNEL.isend(message, i, tag)
 
     def run(self) -> None:
         """Ejecuta al proceso."""
@@ -65,27 +42,27 @@ class Process:
 
         while self.running:
             self.process_loop()
-            time.sleep(0.03)
+            time.sleep(0.02)
 
     def process_loop(self) -> None:
         """Esto se va a ejecutar continuamente mientras el proceso esté activo."""
         pass
 
-class Worker(Process, Generic[T]):
+class Worker(Process):
     """Proceso que existe junto con otros en un entorno de paralelismo. Se va a encargar de turnarse con otros para procesar un archivo por partes."""
-    workload: WorkLoad[T] | None
+    workload: WorkLoad | None
     filename: str
     outfile: str
-    chunk_processor: Callable[[str, int], T]
-    write_callback: Callable[[str, int, T], None]
+    chunk_processor: Callable[[str, int], bytes | bytearray]
+    done_callback: Callable[[str, int, bytes | bytearray], None] | None
 
-    def __init__(self, filename: str, outfile: str, chunk_processor: Callable[[str, int], T]) -> None:
+    def __init__(self, filename: str, outfile: str, chunk_processor: Callable[[str, int], bytes | bytearray]) -> None:
         """Proceso que existe junto con otros en un entorno de paralelismo. Se va a encargar de turnarse con otros para procesar un archivo por partes.
 
         Args:
             filename (str): El archivo a procesar.
             outfile (str): El archivo donde se va a escribir el resultado de procesar el archivo de entrada.
-            chunk_processor ((str, int) -> T): Función que le indica al worker como se va a procesar cada parte del archivo de entrada.
+            chunk_processor ((str, int) -> bytes | bytearray): Función que le indica al worker como se va a procesar cada parte del archivo de entrada.
             Retorna el resultado que se va a escribir al archivo de salida.
         """
         super().__init__()
@@ -93,22 +70,21 @@ class Worker(Process, Generic[T]):
         self.outfile = outfile
         self.workload = None
         self.chunk_processor = chunk_processor
-        self.write_callback = lambda _, __, ___: None
+        self.done_callback = None
 
-    def before_write(self, write_callback: Callable[[str, int, T], None]) -> None:
+    def when_done(self, done_callback: Callable[[str, int, bytes | bytearray], None]) -> None:
         """Inscribe una función que se va a ejecutar justo antes de escribir al archivo de salida.
         Permite modificar lo que se va a escribir si esto depende de la salida del Worker anterior a este.
 
         Args:
             write_callback ((str, int, T) -> None): La función
         """
-        self.write_callback = write_callback
+        self.done_callback = done_callback
     
     def process_loop(self) -> None:
         self.handle_messages()
 
         if self.workload and self.current_chunk == self.workload.chunk:
-            self.write_callback(self.outfile, self.workload.chunk, self.workload.result)
             self.write_output()
 
     def handle_messages(self) -> None:
@@ -120,6 +96,9 @@ class Worker(Process, Generic[T]):
                 case ChunkAssignment(chunk_number):
                     result = self.chunk_processor(self.filename, chunk_number)
                     self.workload = WorkLoad(chunk_number, result)
+                    
+                    if self.done_callback:
+                        self.done_callback(self.outfile, self.workload.chunk, self.workload.result)
                 case WorkerDone(_):
                     self.current_chunk += 1
                 case Finalize():
@@ -128,12 +107,20 @@ class Worker(Process, Generic[T]):
     def write_output(self) -> None:
         """Escribe el resultado buffereado al archivo de salida."""
         with open(self.outfile, "ab") as out:
-            out.write(self.workload.result.as_bytes())
+            out.write(self.workload.result)
 
         self.workload = None
         message = WorkerDone(RANK)
         Process.broadcast(message)
         self.current_chunk += 1
+    
+    def notify_holder(chunk_number: int) -> None:
+        for i in range(1, CLUSTER_SIZE):
+            if i != RANK:
+                CHANNEL.isend(1, i, chunk_number)
+
+    def wait(chunk_number: int) -> None:
+        CHANNEL.Probe(tag=chunk_number)
 
 class Root(Process):
     """Proceso principal en un entorno de paralelismo. Está encargado de coordinar al resto de procesos y asignarles el trabajo que deben hacer."""
